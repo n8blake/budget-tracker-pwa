@@ -5,10 +5,34 @@ fetch("/api/transaction")
   .then(response => {
     return response.json();
   })
-  .then(data => {
+  .then(async (data) => {
     console.log(data);
+    let indexedDBdata = await getIndexedRecords();
+    console.log(indexedDBdata);
     // compare data in indexeddb
-    // if there is data that is new, upload that data to server
+    if(data.length != indexedDBdata.length){
+      console.log('Incongruent data');
+      indexedDBdata.forEach(idbTransaction => {
+        let dataExists = false
+        data.forEach(serverTransaction => {
+          if(idbTransaction.date === serverTransaction.date){
+            // data exists
+            dataExists = true;
+          }
+        });
+        // if data doesn't exist, add it to the server
+        if(!dataExists){
+          await fetch("/api/transaction", {
+            method: "POST",
+            body: JSON.stringify(idbTransaction),
+            headers: {
+              Accept: "application/json, text/plain, */*",
+              "Content-Type": "application/json"
+            }
+          })
+        }
+      });
+    }
     // then use indexed db as current data
     // else
     // save db data on global variable
@@ -106,7 +130,41 @@ function saveRecord(tx){
   }
 }
 
+function getIndexedRecords(){
+  let version = transactions.length || 8;
+  const request = window.indexedDB.open('transactions', version);
+  request.onupgradeneeded = event => {
+    const db = event.target.result; 
+    // Create an object store with a date keypath that can be used to query on.
+    const transactionsStore = db.createObjectStore("transactions", {keyPath: "date"});
+    //transactionsStore.createIndex("datetime", "date"); 
+  }
 
+  const indexPromise = new Promise((resolve, reject) => {
+    request.onsuccess = () => {
+      const db = request.result;
+      const dbTransaction = db.transaction(["transactions"], "readwrite");
+      const transactionsStore = dbTransaction.objectStore("transactions");
+      
+      const getRequestIdx = transactionsStore.getAll();
+      getRequestIdx.onsuccess = () => {
+        console.log(getRequestIdx.result);
+        //results = await getRequestIdx.result; 
+         resolve(getRequestIdx.result);
+        };
+      getRequestIdx.onerror = () => {
+        reject(getRequestIdx.error);
+      }
+    }
+    request.onerror = () => {
+      reject(request.error);
+    }
+
+  })
+
+  return indexPromise;
+
+}
 
 function sendTransaction(isAdding) {
   let nameEl = document.querySelector("#t-name");
