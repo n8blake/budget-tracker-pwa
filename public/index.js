@@ -84,8 +84,8 @@ function populateChart() {
 }
 
 // save a record using indexedDB if offline
-function saveRecord(transaction){
-  console.log(transaction);
+function saveRecord(tx){
+  console.log(tx);
   console.log(transactions.length);
   let version = transactions.length;
   const request = window.indexedDB.open('transactions', version);
@@ -95,16 +95,18 @@ function saveRecord(transaction){
     const transactionsStore = db.createObjectStore("transactions", {keyPath: "date"});
     //transactionsStore.createIndex("datetime", "date"); 
   }
-  request.onsuccess = (transaction) => {
+  request.onsuccess = () => {
     const db = request.result;
-    const dbTransaction = db.transaction(["transaction"], "readwrite");
+    const dbTransaction = db.transaction(["transactions"], "readwrite");
     const transactionsStore = dbTransaction.objectStore("transactions");
   
     // Adds data to our objectStore
-    transactionsStore.add(transaction);
+    transactionsStore.add(tx);
 
   }
 }
+
+
 
 function sendTransaction(isAdding) {
   let nameEl = document.querySelector("#t-name");
