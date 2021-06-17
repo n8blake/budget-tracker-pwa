@@ -13,30 +13,50 @@ fetch("/api/transaction")
     if(data.length != indexedDBdata.length){
       console.log('Incongruent data');
       indexedDBdata.forEach(idbTransaction => {
-        let dataExists = false
+        let serverDataExists = false
         data.forEach(serverTransaction => {
           if(idbTransaction.date === serverTransaction.date){
             // data exists
-            dataExists = true;
+            serverDataExists = true;
           }
         });
         // if data doesn't exist, add it to the server
-        if(!dataExists){
-          await fetch("/api/transaction", {
-            method: "POST",
-            body: JSON.stringify(idbTransaction),
-            headers: {
-              Accept: "application/json, text/plain, */*",
-              "Content-Type": "application/json"
-            }
-          })
+        if(!serverDataExists){
+          console.log(`Should add ${idbTransaction.date} to server`);
+          // await fetch("/api/transaction", {
+          //   method: "POST",
+          //   body: JSON.stringify(idbTransaction),
+          //   headers: {
+          //     Accept: "application/json, text/plain, */*",
+          //     "Content-Type": "application/json"
+          //   }
+          // })
         }
       });
+      data.forEach(serverTransaction => {
+        let localDataExists = false;
+        indexedDBdata.forEach(localTransaction => {
+          if(localTransaction.date === serverTransaction.date){
+            // data exists
+            localDataExists = true;
+          }
+        });
+        if(!localDataExists){
+          console.log(`Should add ${serverTransaction.date} to local`);
+          console.log(serverTransaction);
+          saveRecord(serverTransaction);
+        }
+      })
     }
+    // refresh indexedDB data
+    indexedDBdata = await getIndexedRecords();
     // then use indexed db as current data
-    // else
-    // save db data on global variable
-    transactions = data;
+    transactions = indexedDBdata;
+    //
+    // transactions.sort((firstEl, secondEl) => { 
+
+    // })
+    //transactions = data;
 
     populateTotal();
     populateTable();
@@ -111,7 +131,7 @@ function populateChart() {
 function saveRecord(tx){
   console.log(tx);
   console.log(transactions.length);
-  let version = transactions.length;
+  let version = transactions.length || 1;
   const request = window.indexedDB.open('transactions', version);
   request.onupgradeneeded = event => {
     const db = event.target.result; 
@@ -125,13 +145,14 @@ function saveRecord(tx){
     const transactionsStore = dbTransaction.objectStore("transactions");
   
     // Adds data to our objectStore
+    console.log(`Adding ${tx} to indexedDB`);
     transactionsStore.add(tx);
 
   }
 }
 
 function getIndexedRecords(){
-  let version = transactions.length || 8;
+  let version = transactions.length || 1;
   const request = window.indexedDB.open('transactions', version);
   request.onupgradeneeded = event => {
     const db = event.target.result; 
