@@ -6,6 +6,11 @@ fetch("/api/transaction")
     return response.json();
   })
   .then(data => {
+    console.log(data);
+    // compare data in indexeddb
+    // if there is data that is new, upload that data to server
+    // then use indexed db as current data
+    // else
     // save db data on global variable
     transactions = data;
 
@@ -76,6 +81,29 @@ function populateChart() {
         }]
     }
   });
+}
+
+// save a record using indexedDB if offline
+function saveRecord(transaction){
+  console.log(transaction);
+  console.log(transactions.length);
+  let version = transactions.length;
+  const request = window.indexedDB.open('transactions', version);
+  request.onupgradeneeded = event => {
+    const db = event.target.result; 
+    // Create an object store with a date keypath that can be used to query on.
+    const transactionsStore = db.createObjectStore("transactions", {keyPath: "date"});
+    //transactionsStore.createIndex("datetime", "date"); 
+  }
+  request.onsuccess = (transaction) => {
+    const db = request.result;
+    const dbTransaction = db.transaction(["transaction"], "readwrite");
+    const transactionsStore = dbTransaction.objectStore("transactions");
+  
+    // Adds data to our objectStore
+    transactionsStore.add(transaction);
+
+  }
 }
 
 function sendTransaction(isAdding) {
